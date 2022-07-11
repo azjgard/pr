@@ -1,6 +1,6 @@
 **pr** (name tbd) helps you quickly create ✨high context✨ pull requests from the command line.
 
-![image](https://user-images.githubusercontent.com/19500384/178209318-cda0583a-2d09-41bd-a6c8-ef206b15280f.png)
+![v0 gif](./v0.gif)
 
 ## Current features
 
