@@ -20,4 +20,12 @@ serde = { version = "1.0", features = ["derive"] }
 # but you may be using a different one.
 serde_json = "1.0"
 
+## Environment loading
 dotenv = "0.15.0"
+
+## Open files in default editor
+edit = "0.1.4"
+
+## Terminal UI stuff
+tui = "0.18"
+crossterm = "0.23"

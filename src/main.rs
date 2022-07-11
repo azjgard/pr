@@ -1,25 +1,22 @@
-use std::{env, process::Command, fs::File, io::{Write, BufReader, Read}};
+use std::{env, process::Command};
 use regex::Regex;
 use reqwest;
 use serde::{Serialize, Deserialize, Deserializer};
 use serde_json;
 use dotenv;
-
-fn verify_dependencies() -> () {
-  // TODO: git installation
-  // TODO: gh installation + authenticated
-}
-
-fn get_default_branch() -> String {
-  String::from("master")
-}
+use edit;
 
 fn exit(message: &str) {
   println!("{}", message);
   panic!();
 }
 
-fn git(args: &[&str]) -> String {
+fn verify_dependencies() -> () {
+  // TODO: git installation
+  // TODO: gh installation + authenticated
+}
+
+fn git(args: &[&str], err_on_std_err: bool) -> String {
   let mut output = Command::new("git");
 
   for arg in args {
@@ -31,22 +28,54 @@ fn git(args: &[&str]) -> String {
     .expect("Failed to execute git command '{arg}'");
 
   if !output.stderr.is_empty() {
-    // TODO: git push -u origin writes to stderr if the branch is already pushed
-    // exit(&String::from_utf8(output.stderr).unwrap());
+    let error_message = String::from_utf8(output.stderr).unwrap();
+    if err_on_std_err {
+      exit(&error_message)
+    }
+
+    eprintln!("{}", error_message);
   }
 
   String::from_utf8(output.stdout)
     .expect("Failed to convert git command '{arg}' stdout to string")
 }
 
+// TODO: add support for reading default target from config file 
+fn get_default_target_branch() -> String {
+  let branches = git(&["branch"], true);
+  let branches_by_line = branches.split('\n').map(|line| line.trim());
+
+  let mut default_branch = String::new();
+  for branch in branches_by_line {
+    println!("{}", branch);
+    if branch.eq("main") {
+      default_branch.push_str("main");
+      break;
+    }
+    if branch.eq("master") {
+      default_branch.push_str("master");
+      break;
+    }
+  };
+
+  if default_branch.is_empty() {
+    exit("Failed to determine default branch");
+  }
+
+  default_branch
+}
+
+
 fn git_current_branch() -> String {
-  git(&["rev-parse", "--abbrev-ref", "HEAD"])
+  git(&["rev-parse", "--abbrev-ref", "HEAD"], true)
+    .trim()
+    .to_string()
 }
 
 fn git_target_branch() -> String {
   match env::args().nth(1) {
     None => {
-      let default_branch = get_default_branch();
+      let default_branch = get_default_target_branch();
       println!("Target branch not specified. Defaulting to `{default_branch}`");
       default_branch
     },
@@ -56,7 +85,7 @@ fn git_target_branch() -> String {
 
 #[derive(Debug)]
 struct Commit {
-  hash: String,
+  _hash: String,
   message: String
 }
 
@@ -64,13 +93,13 @@ fn git_commit_from_line(line: &str, pattern: &Regex) -> Commit {
   let captures = pattern.captures(line).unwrap();
 
   Commit {
-    hash: String::from(&captures["commit_hash"]),
+    _hash: String::from(&captures["commit_hash"]),
     message: String::from(&captures["commit_message"])
   }
 }
 
 fn git_commits_between_branches(current_branch:&str, target_branch: &str) -> Vec<Commit> {
-  let commits_str = git(&["log", "--oneline", &format!("{}..{}", target_branch.trim(), current_branch.trim())]);
+  let commits_str = git(&["log", "--oneline", &format!("{}..{}", target_branch.trim(), current_branch.trim())], true);
 
   let pattern = Regex::new(r"^(?P<commit_hash>\w+)\s(?P<commit_message>.+)$").unwrap();
 
@@ -155,7 +184,6 @@ fn get_overview_str(commits: &Vec<Commit>) -> String {
       let mut str = format!("- {}", commit.message);
       if i < commits.len() - 1 {
         str.push('\n');
-
       }
 
       overview_str.push_str(&str);
@@ -184,13 +212,15 @@ fn get_pr_name(linear_ticket: &Option<LinearIssue>, linear_ticket_id: &Option<St
       Some(ticket) => {
         let ticket_id = linear_ticket_id.clone().unwrap();
         let ticket_title = &ticket.title;
-        Some(format!("[{ticket_id}] {ticket_title}"))
+        Some(format!(r"<!--- The title of your pull request. Save and close this file to continue. --->
+[{ticket_id}] {ticket_title}"))
       }
     }
 }
 
-fn get_pr_template(overview: &str, context: &str) -> String {
-format!(r"## Overview
+fn get_pr_body(overview: &str, context: &str) -> String {
+  format!(r"<!--- The body of your pull request. Save and close this file to continue. --->
+## Overview
 {overview}
 
 ## Context
@@ -199,9 +229,11 @@ format!(r"## Overview
 ## Screenshots
 
 ## Test Plan
+
 "
-    )
+  )
 }
+
 
 fn main() {
     dotenv::dotenv().ok();
@@ -219,51 +251,21 @@ fn main() {
     let overview_str = get_overview_str(&commits);
     let context_str = get_context_str(&linear_ticket);
 
-    let pr_template = get_pr_template(&overview_str, &context_str);
-    let pr_name = get_pr_name(&linear_ticket, &linear_ticket_id);
+    let pr_title = get_pr_name(&linear_ticket, &linear_ticket_id);
+    let pr_title = edit::edit(pr_title.unwrap_or_default().as_bytes()).unwrap()
+      .lines()
+      .skip(1)
+      .collect::<Vec<&str>>()
+      .join("\n");
 
-    let temp_dir = env::temp_dir();
+    let pr_body = get_pr_body(&overview_str, &context_str);
+    let pr_body = edit::edit(pr_body).unwrap()
+      .lines()
+      .skip(1)
+      .collect::<Vec<&str>>()
+      .join("\n");
 
-    let mut template_file_path = temp_dir.clone();
-    template_file_path.push("pr_description"); // TODO: generate random name?
-    template_file_path.set_extension("md");
-
-    // TODO: add instructions to the data being written, similar to git commit
-    let mut template_file = File::create(&template_file_path).expect("Failed to create temporary file");
-    template_file.write_all(pr_template.as_bytes()).expect("Failed to write pr template to temporary file");
-
-    // TODO: use env $EDITOR with fallbacks
-    Command::new("nvim")
-      .arg(template_file_path.to_str().unwrap())
-      .status()
-      .unwrap();
-
-    let mut pr_name_file_path = temp_dir.clone();
-    pr_name_file_path.push("pr_name"); // TODO: generate random name?
-    pr_name_file_path.set_extension("md");
-
-    // TODO: add instructions to the data being written, similar to git commit
-    let mut pr_name_file = File::create(&pr_name_file_path).expect("Failed to create temporary file");
-    pr_name_file.write_all(pr_template.as_bytes()).expect("Failed to write pr name to temporary file");
-
-    if matches!(pr_name, None) {
-      // TODO: use env $EDITOR with fallbacks
-      Command::new("nvim")
-        .arg(pr_name_file_path.to_str().unwrap())
-        .status()
-        .unwrap();
-    }
-
-    git(&["push", "-u", "origin", &target_branch]);
-
-    // TODO: neeed to reopen file here (this is where i left off)
-    let mut reader = BufReader::new(pr_name_file);
-    let mut pr_title = String::new();
-    reader.read_to_string(&mut pr_title).unwrap();
-
-    let mut reader = BufReader::new(template_file);
-    let mut pr_description = String::new();
-    reader.read_to_string(&mut pr_description).unwrap();
+    git(&["push", "-u", "origin", &current_branch], false);
 
     // TODO: add reviewers
     let gh_output = Command::new("gh")
@@ -271,11 +273,14 @@ fn main() {
       .arg("create")
       .arg("--title")
       .arg(&pr_title)
-      .arg("--description")
-      .arg(&pr_description)
+      .arg("--body")
+      .arg(&pr_body)
+      .arg("--base")
+      .arg(&target_branch)
       .output()
       .unwrap();
 
     // TODO: format this output uniformly
     println!("{}", String::from_utf8(gh_output.stdout).unwrap());
+    println!("{}", String::from_utf8(gh_output.stderr).unwrap());
 }
