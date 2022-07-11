@@ -27,5 +27,7 @@ dotenv = "0.15.0"
 edit = "0.1.4"
 
 ## Terminal UI stuff
-tui = "0.18"
-crossterm = "0.23"
+termion = "1.5"
+tui = { version = "0.18", default-features = false, features = ['termion'] }
+
+loading = "*"

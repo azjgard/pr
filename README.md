@@ -1,27 +1,72 @@
-## Goal
+**pr** (name tbd) helps you quickly create ✨high context✨ pull requests from the command line.
 
-Streamline the process of opening new PRs as follows:
+## Current features
 
-### Setup
+Run a single command to automatically infer a bunch of useful information to be included in a PR, then automagically open it up on GitHub -- all without having to leave your terminal.
 
-1. Specify a template for a PR (template can be hardcoded for a v1)
+- Accepts target branch for PR as argument or automatically chooses `main` / `master` according to how current repository is configured
+- Parses current branch name for "DIT-XXX" pattern; if matched, use pattern to query Linear ticket information from Linear API
+- If Linear ticket is found:
+  > - Auto-populates PR title following pattern "[DIT-XXX] {Linear ticket name}"
+  > - Auto-populates `Context` section of PR body with Linear ticket description
+- Auto-populates `Overview` section of PR body with chronologically ordered commits that exist in current branch but don't exist in the target branch
+- In the style of `git commit`:
+  > - Opens generated PR title in default system `$EDITOR` (e.g. vim) forediting before submitting
+  > - Opens generated PR body in default system `$EDITOR` (e.g. vim) for editing before submitting
 
-### Running a binary
+## Requirements
 
-1. Takes an argument for the branch to open a PR against (defaults to `master` or `main`)
-2. Parses template for a PR / configuration for tool
-3. Parses the name of the current git branch
-4. Parses commits that current branch has that target branch does not
-5. Performs **actions** according to all data available
-6. Fills out the template with the data
-7. Opens up a text editor for one or more prompts to fill in relevant parts of the PR
-8. Opens a PR on GitHub
+- `git` installed
+- [gh](https://cli.github.com/) installed and authenticated
 
-## Initial Version
+## Installation
 
-1. Parse `dit-xxx` from the name of the current branch and fetch the Linear issue from it. Include the link to the Linear ticket under `Context` along with the ticket description.
-2. Determine PR title as `[DIT-XXX] {Project Name}: {Issue Title}`
-3. Parse the difference in commits between current branch and target branch and populate `Description` with those as bullet points
-4. Put everything into an editor and allow the user to edit and save
-5. Allow user to select from a list of reviewers
-6. Hit `Confirm` (or CR) and open the PR on the specified repository
+lol homebrew or somethin?
+
+if you want to use this right now you'll install the Rust toolchain stuff, clone the repo, run `cargo build`, then symlink the binary somewhere in your `$PATH` - sounds like a nightmare.
+
+## Usage
+
+Current working directory must..
+
+- be a git repo
+- have a remote called `origin`
+- have an `.env` file in with `LINEAR_API_KEY` specified in it:
+
+```
+LINEAR_API_KEY=lin_api_xxxxx
+```
+
+Then it's ez!
+
+```
+# automatically open PR for current branch
+pr
+
+# automatically open PR for explicit target
+pr some/target/branch
+```
+
+## TODOS
+
+- [ ] Help menu
+- [ ] Support selecting list of reviewers
+- [ ] Support selecting list of recent screenshots (+gifs?) in screenshot directory to include in PR body
+  > - Upload as attachments to [Linear ticket](https://developers.linear.app/docs/graphql/attachments), [Jira ticket](https://confluence.atlassian.com/jirakb/how-to-add-an-attachment-to-a-jira-issue-using-rest-api-699957734.html) or some other custom specified source, and then use the links generated from there to include in PR markup.
+- [ ] Support for parsing project management ticket identifier patterns from commit messages to associate multiple tickets with a single PR.
+- [ ] Support reading from a configuration file:
+  > - PR title template
+  > - PR body template
+  > - Default target branch for PRs
+  > - Settings for project management integration (Linear versus Jira versus etc)
+  > - Regex for parsing project management ticket identifier
+- [ ] Tests
+- [ ] Refactor all my garbo code
+- [ ] Multithread or something? idk
+
+## Motivation
+
+Two reasons for creating this:
+
+1. It's a tool I've been craving because I spend an excessive amount of time writing PR descriptions and creating a network of backlinks between GitHub, Linear, and Slack to make things easier to refer to later.
+2. I wanted a simple starter project to learn Rust with -- everyone is talking about it and I got FOMO.
