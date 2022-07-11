@@ -1,5 +1,7 @@
 **pr** (name tbd) helps you quickly create ✨high context✨ pull requests from the command line.
 
+![image](https://user-images.githubusercontent.com/19500384/178209318-cda0583a-2d09-41bd-a6c8-ef206b15280f.png)
+
 ## Current features
 
 Run a single command to automatically infer a bunch of useful information to be included in a PR, then automagically open it up on GitHub -- all without having to leave your terminal.
