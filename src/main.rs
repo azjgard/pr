@@ -1,14 +1,15 @@
+use console::Term;
 use dotenv;
 use edit;
 use regex::Regex;
 use reqwest;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json;
+use std::io::{self, Read};
 use std::{env, process::Command};
 use std::thread;
 use std::time::Duration;
 use structopt::StructOpt;
-
 use loading::Loading;
 
 fn exit(message: &str) -> ! {
@@ -203,16 +204,21 @@ fn get_pr_title(
     linear_ticket: &Option<LinearIssue>,
     linear_ticket_id: &Option<String>,
 ) -> Option<String> {
-    linear_ticket.as_ref().map(|ticket| {
-        let ticket_id = linear_ticket_id.clone().unwrap();
-        format!(
-            r"<!--- The title of your pull request. Save and close this file to continue. --->
-[{ticket_id}] {ticket_title}",
-            ticket_id = ticket_id,
-            ticket_title = ticket.title
-        )
-    })
+    if linear_ticket.is_none() {
+        Some("<!--- The title of your pull request. Save and close this file to continue. --->".to_string())
+    } else {
+        linear_ticket.as_ref().map(|ticket| {
+            let ticket_id = linear_ticket_id.clone().unwrap();
+            format!(
+                r"<!--- The title of your pull request. Save and close this file to continue. --->
+                [{ticket_id}] {ticket_title}",
+                ticket_id = ticket_id,
+                ticket_title = ticket.title
+            )
+        })
+    }
 }
+
 
 fn get_pr_body(overview: &str, context: &str) -> String {
     format!(
@@ -293,6 +299,8 @@ fn main() {
         .collect::<Vec<&str>>()
         .join("\n");
 
+    dbg!(&pr_title);
+
     let pr_body = get_pr_body(&overview_str, &context_str);
     let pr_body = edit::edit(pr_body)
         .unwrap()
@@ -301,16 +309,21 @@ fn main() {
         .collect::<Vec<&str>>()
         .join("\n");
 
+
+        dbg!(&pr_body);
+
     if !args.no_confirm {
-        loading.text("Confirm creating pull request (y): ");
-        let mut confirmation = String::new();
-        std::io::stdin()
-            .read_line(&mut confirmation)
-            .expect("Failed to read input");
-        if !confirmation.trim().eq_ignore_ascii_case("y") {
-            loading.text("Pull request creation aborted.");
-            loading.end();
-            return;
+        println!("Confirm creating pull request (y): ");
+
+        let term = Term::stdout();
+
+        if let Ok(input_char) = term.read_char() {
+            if !input_char.eq_ignore_ascii_case(&'y') {
+                println!("Pull request creation aborted.");
+                return;
+            }
+        } else {
+            eprintln!("Failed to read input");
         }
     }
 
