@@ -32,3 +32,4 @@ termion = "1.5"
 tui = { version = "0.18", default-features = false, features = ['termion'] }
 
 loading = "*"
+console = "0.15.7"
