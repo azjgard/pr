@@ -1,4 +1,3 @@
-use console::Term;
 use dotenv;
 use edit;
 use regex::Regex;
@@ -10,6 +9,8 @@ use std::thread;
 use std::time::Duration;
 use structopt::StructOpt;
 use loading::Loading;
+use dialoguer::{console::Term, theme::ColorfulTheme, MultiSelect};
+
 
 fn exit(message: &str) -> ! {
     println!("{}", message);
@@ -238,6 +239,24 @@ fn get_pr_body(overview: &str, context: &str) -> String {
     )
 }
 
+fn fetch_github_reviewers() -> Vec<String> {
+    let gh_users = Command::new("gh")
+        .arg("api")
+        .arg("orgs/dittowords/members")
+        .arg("--jq")
+        .arg(".[].login")
+        .output()
+        .unwrap();
+
+    let gh_users = String::from_utf8_lossy(&gh_users.stdout)
+        .split_whitespace()
+        .map(String::from)
+        .collect::<Vec<String>>();
+
+    gh_users
+}
+
+
 #[derive(Debug, StructOpt)]
 #[structopt(name = "pr-cli", about = "Create a pull request")]
 struct CliArgs {
@@ -247,6 +266,9 @@ struct CliArgs {
     /// Skip confirmation prompt
     #[structopt(long)]
     no_confirm: bool,
+    /// Skip selecting reviewers
+    #[structopt(long)]
+    no_reviewers: bool,
 }
 
 fn main() {
@@ -315,6 +337,33 @@ fn main() {
         .collect::<Vec<&str>>()
         .join("\n");
 
+    let mut reviewers: Vec<String> = vec![];
+
+    if !args.no_reviewers {
+        let gh_users = fetch_github_reviewers();
+        let selection = MultiSelect::with_theme(&ColorfulTheme::default())
+            .items(&gh_users)
+            .defaults(&[])
+            .interact_on_opt(&Term::stderr())
+            .unwrap_or_else(|err| {
+                eprintln!("Error: {}", err);
+                None
+            });
+
+    
+        match selection {
+            Some(positions) => {
+                reviewers = positions
+                    .iter()
+                    .map(|&index| gh_users[index].clone())
+                    .collect();
+                println!("Selected reviewers: {:?}", reviewers);
+            }
+            None => println!("User exited using Esc or q")
+        }
+    }
+
+
     if !args.no_confirm {
         println!("Confirm creating pull request (y): ");
 
@@ -337,16 +386,22 @@ fn main() {
 
     // TODO: add reviewer
     loading.text("Opening pull request..");
-    let gh_output = Command::new("gh")
-        .arg("pr")
+    let mut gh_command = Command::new("gh");
+    gh_command.arg("pr")
         .arg("create")
         .arg("--title")
         .arg(&pr_title)
         .arg("--body")
         .arg(&pr_body)
         .arg("--base")
-        .arg(&target_branch)
-        .output()
+        .arg(&target_branch);
+
+    if !reviewers.is_empty() {
+        let reviewer_string = reviewers.join(",");
+        gh_command.arg("--reviewer").arg(reviewer_string);
+    }
+
+    let gh_output = gh_command.output()
         .unwrap();
 
     let gh_output_stderr = String::from_utf8_lossy(&gh_output.stderr);
