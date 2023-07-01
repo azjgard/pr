@@ -19,7 +19,7 @@ curl -LJO "$download_url"
 chmod +x "$filename"
 
 # Move the binary to /usr/bin
-echo "Moving $filename to /usr/bin..."
-mv "$filename" /usr/bin/pr
+echo "Moving $filename to /usr/local/bin..."
+mv "$filename" /usr/local/bin/pr
 
 echo "Installation completed!"
