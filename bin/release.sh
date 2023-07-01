@@ -31,7 +31,8 @@ case $choice in
         ;;
 esac
 
-current_version=$(grep -oP '(?<=^version = ").*(?="$)' Cargo.toml)
+current_version=$(sed -nE 's/^version = "(.*)"/\1/p' Cargo.toml)
+
 new_version=$(semver bump $bump $current_version)
 sed -i '' "s/version = \".*\"/version = \"$new_version\"/" Cargo.toml
 
