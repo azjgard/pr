@@ -241,6 +241,9 @@ fn get_pr_body(overview: &str, context: &str) -> String {
 #[derive(Debug, StructOpt)]
 #[structopt(name = "pr-cli", about = "Create a pull request")]
 struct CliArgs {
+    /// Show version
+    #[structopt(short,long)]
+    version: bool,
     /// Skip confirmation prompt
     #[structopt(long)]
     no_confirm: bool,
@@ -250,6 +253,12 @@ fn main() {
     dotenv::dotenv().ok();
 
     let args = CliArgs::from_args();
+
+    if args.version {
+        let version = env!("CARGO_PKG_VERSION");
+        println!("pr version {version}\n", version = version);
+        return;
+    }
 
     let loading = Loading::default();
 
