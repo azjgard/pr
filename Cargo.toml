@@ -1,5 +1,5 @@
 [package]
-name = "pr_opener"
+name = "pr"
 version = "0.1.0"
 edition = "2021"
 
