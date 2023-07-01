@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Check if the script is running with sudo
-if [ "$EUID" -ne 0 ]; then
-  echo "Please run this script with sudo."
-  exit 1
-fi
-
 # Fetch the latest release information from GitHub API
 release_info=$(curl --silent "https://api.github.com/repos/jaerod95/pr/releases/latest")
 
