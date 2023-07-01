@@ -43,10 +43,10 @@ sleep 3
 
 git add . && git commit -m "Bump version to $new_version" && git push origin main
 
-# cargo build --release
-# release_binary="target/release/pr"
+cargo build --release
+release_binary="target/release/pr"
 
-# echo "Creating GitHub release..."
-# gh release create "v$new_version" "$release_binary" --notes "Release $new_version"
+echo "Creating GitHub release..."
+gh release create "v$new_version" "$release_binary" --notes "Release $new_version"
 
-# echo "Release created and binary uploaded."
+echo "Release created and binary uploaded."
