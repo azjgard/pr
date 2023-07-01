@@ -211,7 +211,7 @@ fn get_pr_title(
             let ticket_id = linear_ticket_id.clone().unwrap();
             format!(
                 r"<!--- The title of your pull request. Save and close this file to continue. --->
-                [{ticket_id}] {ticket_title}",
+[{ticket_id}] {ticket_title}",
                 ticket_id = ticket_id,
                 ticket_title = ticket.title
             )
@@ -299,8 +299,6 @@ fn main() {
         .collect::<Vec<&str>>()
         .join("\n");
 
-    dbg!(&pr_title);
-
     let pr_body = get_pr_body(&overview_str, &context_str);
     let pr_body = edit::edit(pr_body)
         .unwrap()
@@ -308,9 +306,6 @@ fn main() {
         .skip(1)
         .collect::<Vec<&str>>()
         .join("\n");
-
-
-        dbg!(&pr_body);
 
     if !args.no_confirm {
         println!("Confirm creating pull request (y): ");
