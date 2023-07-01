@@ -27,6 +27,12 @@ lol homebrew or somethin?
 
 if you want to use this right now you'll install the Rust toolchain stuff, clone the repo, run `cargo build`, then symlink the binary somewhere in your `$PATH` - sounds like a nightmare.
 
+WIP:
+
+```
+curl -LO https://raw.githubusercontent.com/jaerod95/pr/main/bin/install.sh && sudo chmod +x ./install.sh && sudo ./install.sh && rm ./install.sh
+```
+
 ## Usage
 
 Current working directory must..
