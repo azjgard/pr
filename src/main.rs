@@ -9,7 +9,7 @@ use std::thread;
 use std::time::Duration;
 use structopt::StructOpt;
 use loading::Loading;
-use dialoguer::{console::Term, theme::ColorfulTheme, Select};
+use dialoguer::{console::Term, theme::ColorfulTheme, MultiSelect};
 
 
 fn exit(message: &str) -> ! {
@@ -247,14 +247,11 @@ fn fetch_github_reviewers() -> Vec<String> {
         .arg(".[].login")
         .output()
         .unwrap();
-    dbg!(&gh_users);
 
     let gh_users = String::from_utf8_lossy(&gh_users.stdout)
         .split_whitespace()
         .map(String::from)
         .collect::<Vec<String>>();
-
-    dbg!(&gh_users);
 
     gh_users
 }
@@ -340,11 +337,13 @@ fn main() {
         .collect::<Vec<&str>>()
         .join("\n");
 
+    let mut reviewers: Vec<String> = vec![];
+
     if !args.no_reviewers {
         let gh_users = fetch_github_reviewers();
-        let selection = Select::with_theme(&ColorfulTheme::default())
+        let selection = MultiSelect::with_theme(&ColorfulTheme::default())
             .items(&gh_users)
-            .default(0)
+            .defaults(&[])
             .interact_on_opt(&Term::stderr())
             .unwrap_or_else(|err| {
                 eprintln!("Error: {}", err);
@@ -353,8 +352,14 @@ fn main() {
 
     
         match selection {
-            Some(index) => println!("User selected item : {}", gh_users[index]),
-            None => println!("User did not select anything")
+            Some(positions) => {
+                reviewers = positions
+                    .iter()
+                    .map(|&index| gh_users[index].clone())
+                    .collect();
+                println!("Selected reviewers: {:?}", reviewers);
+            }
+            None => println!("User exited using Esc or q")
         }
     }
 
@@ -381,16 +386,22 @@ fn main() {
 
     // TODO: add reviewer
     loading.text("Opening pull request..");
-    let gh_output = Command::new("gh")
-        .arg("pr")
+    let mut gh_command = Command::new("gh");
+    gh_command.arg("pr")
         .arg("create")
         .arg("--title")
         .arg(&pr_title)
         .arg("--body")
         .arg(&pr_body)
         .arg("--base")
-        .arg(&target_branch)
-        .output()
+        .arg(&target_branch);
+
+    if !reviewers.is_empty() {
+        let reviewer_string = reviewers.join(",");
+        gh_command.arg("--reviewer").arg(reviewer_string);
+    }
+
+    let gh_output = gh_command.output()
         .unwrap();
 
     let gh_output_stderr = String::from_utf8_lossy(&gh_output.stderr);
