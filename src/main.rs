@@ -1,4 +1,3 @@
-use console::Term;
 use dotenv;
 use edit;
 use regex::Regex;
@@ -10,6 +9,8 @@ use std::thread;
 use std::time::Duration;
 use structopt::StructOpt;
 use loading::Loading;
+use dialoguer::{console::Term, theme::ColorfulTheme, Select};
+
 
 fn exit(message: &str) -> ! {
     println!("{}", message);
@@ -238,6 +239,27 @@ fn get_pr_body(overview: &str, context: &str) -> String {
     )
 }
 
+fn fetch_github_reviewers() -> Vec<String> {
+    let gh_users = Command::new("gh")
+        .arg("api")
+        .arg("orgs/dittowords/members")
+        .arg("--jq")
+        .arg(".[].login")
+        .output()
+        .unwrap();
+    dbg!(&gh_users);
+
+    let gh_users = String::from_utf8_lossy(&gh_users.stdout)
+        .split_whitespace()
+        .map(String::from)
+        .collect::<Vec<String>>();
+
+    dbg!(&gh_users);
+
+    gh_users
+}
+
+
 #[derive(Debug, StructOpt)]
 #[structopt(name = "pr-cli", about = "Create a pull request")]
 struct CliArgs {
@@ -247,6 +269,9 @@ struct CliArgs {
     /// Skip confirmation prompt
     #[structopt(long)]
     no_confirm: bool,
+    /// Skip selecting reviewers
+    #[structopt(long)]
+    no_reviewers: bool,
 }
 
 fn main() {
@@ -314,6 +339,25 @@ fn main() {
         .skip(1)
         .collect::<Vec<&str>>()
         .join("\n");
+
+    if !args.no_reviewers {
+        let gh_users = fetch_github_reviewers();
+        let selection = Select::with_theme(&ColorfulTheme::default())
+            .items(&gh_users)
+            .default(0)
+            .interact_on_opt(&Term::stderr())
+            .unwrap_or_else(|err| {
+                eprintln!("Error: {}", err);
+                None
+            });
+
+    
+        match selection {
+            Some(index) => println!("User selected item : {}", gh_users[index]),
+            None => println!("User did not select anything")
+        }
+    }
+
 
     if !args.no_confirm {
         println!("Confirm creating pull request (y): ");

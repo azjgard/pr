@@ -33,3 +33,4 @@ tui = { version = "0.18", default-features = false, features = ['termion'] }
 
 loading = "*"
 console = "0.15.7"
+dialoguer = "0.10.4"
