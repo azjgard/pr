@@ -5,7 +5,8 @@ release_info=$(curl --silent "https://api.github.com/repos/jaerod95/pr/releases/
 
 # Parse the download URL of the release asset
 download_url=$(echo "$release_info" | grep -Eo 'browser_download_url.*$')
-download_url=${download_url:24:-1}
+download_url=${download_url:24}
+download_url=${download_url%?}
 
 # Extract the filename from the download URL
 filename=$(basename "$download_url")
