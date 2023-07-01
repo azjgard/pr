@@ -47,6 +47,6 @@ cargo build --release
 release_binary="target/release/pr"
 
 echo "Creating GitHub release..."
-gh release create "v$new_version" "$release_binary" --notes "Release $new_version"
+gh release create "v$new_version" "$release_binary" --notes "Release $new_version" --generate-notes
 
 echo "Release created and binary uploaded."
