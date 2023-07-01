@@ -36,8 +36,10 @@ current_version=$(sed -nE 's/^version = "(.*)"/\1/p' Cargo.toml)
 new_version=$(semver -i $bump $current_version)
 awk -v new_version="$new_version" '/^version = / {$0 = "version = \"" new_version "\""} {print}' Cargo.toml > Cargo.toml.tmp && mv Cargo.toml.tmp Cargo.toml
 
-
 echo "Updated version: $new_version"
+
+echo "Sleeping so the Cargo.lock can change..."
+sleep 3
 
 git add . && git commit -m "Bump version to $new_version" && git push origin main
 
