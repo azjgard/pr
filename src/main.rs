@@ -5,7 +5,6 @@ use regex::Regex;
 use reqwest;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json;
-use std::io::{self, Read};
 use std::{env, process::Command};
 use std::thread;
 use std::time::Duration;
