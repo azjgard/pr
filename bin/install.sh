@@ -20,6 +20,6 @@ chmod +x "$filename"
 
 # Move the binary to /usr/bin
 echo "Moving $filename to /usr/local/bin..."
-mv "$filename" /usr/local/bin/pr
+mv "$filename" /usr/local/bin/
 
 echo "Installation completed!"
