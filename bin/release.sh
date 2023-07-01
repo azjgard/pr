@@ -33,15 +33,15 @@ esac
 
 current_version=$(sed -nE 's/^version = "(.*)"/\1/p' Cargo.toml)
 
-new_version=$(semver bump $bump $current_version)
+new_version=$(semver -i $bump $current_version)
 sed -i '' "s/version = \".*\"/version = \"$new_version\"/" Cargo.toml
 
-echo "Updated version: $new_version"
+# echo "Updated version: $new_version"
 
-cargo build --release
-release_binary="target/release/pr"
+# cargo build --release
+# release_binary="target/release/pr"
 
-echo "Creating GitHub release..."
-gh release create "v$new_version" "$release_binary" --notes "Release $new_version"
+# echo "Creating GitHub release..."
+# gh release create "v$new_version" "$release_binary" --notes "Release $new_version"
 
-echo "Release created and binary uploaded."
+# echo "Release created and binary uploaded."
