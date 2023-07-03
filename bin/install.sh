@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Fetch the latest release information from GitHub API
-release_info=$(curl --silent "https://api.github.com/repos/jaerod95/pr/releases/latest")
+release_info=$(curl --silent "https://api.github.com/repos/azjgard/pr/releases/latest")
 
 # Parse the download URL of the release asset
 download_url=$(echo "$release_info" | grep -Eo 'browser_download_url.*$')
