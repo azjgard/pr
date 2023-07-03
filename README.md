@@ -55,6 +55,10 @@ pr
 pr some/target/branch
 ```
 
+## Development
+
+To create a new release, simply run `./bin/release.sh` and follow the prompts.
+
 ## TODOS
 
 - [ ] Help menu
