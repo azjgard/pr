@@ -30,7 +30,7 @@ if you want to use this right now you'll install the Rust toolchain stuff, clone
 WIP:
 
 ```
-curl -LO https://raw.githubusercontent.com/jaerod95/pr/main/bin/install.sh && sudo chmod +x ./install.sh && sudo ./install.sh && rm ./install.sh
+curl -LO https://raw.githubusercontent.com/azjgard/pr/main/bin/install.sh && sudo chmod +x ./install.sh && sudo ./install.sh && rm ./install.sh
 ```
 
 ## Usage
@@ -58,7 +58,6 @@ pr some/target/branch
 ## TODOS
 
 - [ ] Help menu
-- [ ] Support selecting list of reviewers
 - [ ] Support selecting list of recent screenshots (+gifs?) in screenshot directory to include in PR body
   > - Upload as attachments to [Linear ticket](https://developers.linear.app/docs/graphql/attachments), [Jira ticket](https://confluence.atlassian.com/jirakb/how-to-add-an-attachment-to-a-jira-issue-using-rest-api-699957734.html) or some other custom specified source, and then use the links generated from there to include in PR markup.
 - [ ] Support for parsing project management ticket identifier patterns from commit messages to associate multiple tickets with a single PR.
