@@ -1,11 +1,12 @@
 [package]
 name = "pr_opener"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+structopt = { version = "0.3" }
 regex = "1.5"
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 tokio = { version = "1", features = ["full"] }
@@ -31,3 +32,5 @@ termion = "1.5"
 tui = { version = "0.18", default-features = false, features = ['termion'] }
 
 loading = "*"
+console = "0.15.7"
+dialoguer = "0.10.4"

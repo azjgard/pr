@@ -5,45 +5,40 @@ use reqwest;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json;
 use std::{env, process::Command};
-
-use loading::Loading;
 use std::thread;
 use std::time::Duration;
+use structopt::StructOpt;
+use loading::Loading;
+use dialoguer::{console::Term, theme::ColorfulTheme, MultiSelect};
 
-fn exit(message: &str) {
+
+fn exit(message: &str) -> ! {
     println!("{}", message);
     panic!();
 }
 
-fn verify_dependencies() -> () {
-    // TODO: git is installed
-    // TODO: gh is installed
-    // TODO: gh is authenticated
+fn verify_dependencies() {
+    // TODO: Check if git and gh are installed
+    // TODO: Check if gh is authenticated
     thread::sleep(Duration::from_millis(1000));
 }
 
 fn git(args: &[&str], err_on_std_err: bool) -> String {
-    let mut output = Command::new("git");
-
-    for arg in args {
-        output.arg(arg);
-    }
-
-    let output = output
+    let output = Command::new("git")
+        .args(args)
         .output()
-        .expect("Failed to execute git command '{arg}'");
+        .expect("Failed to execute git command");
 
     if !output.stderr.is_empty() {
         let error_message = String::from_utf8(output.stderr).unwrap();
         if err_on_std_err {
-            exit(&error_message)
+            exit(&error_message);
         }
 
         eprintln!("{}", error_message);
     }
 
-    String::from_utf8(output.stdout)
-        .expect("Failed to convert git command '{arg}' stdout to string")
+    String::from_utf8(output.stdout).expect("Failed to convert git command stdout to string")
 }
 
 // TODO: add support for reading default target from config file
@@ -187,28 +182,21 @@ fn get_linear_ticket(ticket_id: &Option<String>) -> Option<LinearIssue> {
     }
 }
 
-fn get_overview_str(commits: &Vec<Commit>) -> String {
-    let mut overview_str = String::new();
-
-    for (i, commit) in commits.iter().enumerate() {
-        let mut str = format!("- {}", commit.message);
-        if i < commits.len() - 1 {
-            str.push('\n');
-        }
-
-        overview_str.push_str(&str);
-    }
+fn get_overview_str(commits: &[Commit]) -> String {
+    let overview_str = commits
+        .iter()
+        .map(|commit| format!("- {}", commit.message))
+        .collect::<Vec<String>>()
+        .join("\n");
 
     overview_str
 }
 
 fn get_context_str(linear_ticket: &Option<LinearIssue>) -> String {
-    match &linear_ticket {
-        None => String::new(),
-        Some(ticket) => {
-            format!("{}\n\n{}", &ticket.url, &ticket.description)
-        }
-    }
+    linear_ticket
+        .as_ref()
+        .map(|ticket| format!("{}\n\n{}", ticket.url, ticket.description))
+        .unwrap_or_default()
 }
 
 // TODO: If no name has been generated, should open an editor for it / prompt for it
@@ -216,18 +204,21 @@ fn get_pr_title(
     linear_ticket: &Option<LinearIssue>,
     linear_ticket_id: &Option<String>,
 ) -> Option<String> {
-    match &linear_ticket {
-        None => None,
-        Some(ticket) => {
+    if linear_ticket.is_none() {
+        Some("<!--- The title of your pull request. Save and close this file to continue. --->".to_string())
+    } else {
+        linear_ticket.as_ref().map(|ticket| {
             let ticket_id = linear_ticket_id.clone().unwrap();
-            let ticket_title = &ticket.title;
-            Some(format!(
+            format!(
                 r"<!--- The title of your pull request. Save and close this file to continue. --->
-[{ticket_id}] {ticket_title}"
-            ))
-        }
+[{ticket_id}] {ticket_title}",
+                ticket_id = ticket_id,
+                ticket_title = ticket.title
+            )
+        })
     }
 }
+
 
 fn get_pr_body(overview: &str, context: &str) -> String {
     format!(
@@ -242,12 +233,54 @@ fn get_pr_body(overview: &str, context: &str) -> String {
 
 ## Test Plan
 
-"
+",
+        overview = overview,
+        context = context
     )
+}
+
+fn fetch_github_reviewers() -> Vec<String> {
+    let gh_users = Command::new("gh")
+        .arg("api")
+        .arg("orgs/dittowords/members")
+        .arg("--jq")
+        .arg(".[].login")
+        .output()
+        .unwrap();
+
+    let gh_users = String::from_utf8_lossy(&gh_users.stdout)
+        .split_whitespace()
+        .map(String::from)
+        .collect::<Vec<String>>();
+
+    gh_users
+}
+
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "pr-cli", about = "Create a pull request")]
+struct CliArgs {
+    /// Show version
+    #[structopt(short,long)]
+    version: bool,
+    /// Skip confirmation prompt
+    #[structopt(long)]
+    no_confirm: bool,
+    /// Skip selecting reviewers
+    #[structopt(long)]
+    no_reviewers: bool,
 }
 
 fn main() {
     dotenv::dotenv().ok();
+
+    let args = CliArgs::from_args();
+
+    if args.version {
+        let version = env!("CARGO_PKG_VERSION");
+        println!("pr version {version}\n", version = version);
+        return;
+    }
 
     let loading = Loading::default();
 
@@ -304,6 +337,48 @@ fn main() {
         .collect::<Vec<&str>>()
         .join("\n");
 
+    let mut reviewers: Vec<String> = vec![];
+
+    if !args.no_reviewers {
+        let gh_users = fetch_github_reviewers();
+        let selection = MultiSelect::with_theme(&ColorfulTheme::default())
+            .items(&gh_users)
+            .defaults(&[])
+            .interact_on_opt(&Term::stderr())
+            .unwrap_or_else(|err| {
+                eprintln!("Error: {}", err);
+                None
+            });
+
+    
+        match selection {
+            Some(positions) => {
+                reviewers = positions
+                    .iter()
+                    .map(|&index| gh_users[index].clone())
+                    .collect();
+                println!("Selected reviewers: {:?}", reviewers);
+            }
+            None => println!("User exited using Esc or q")
+        }
+    }
+
+
+    if !args.no_confirm {
+        println!("Confirm creating pull request (y): ");
+
+        let term = Term::stdout();
+
+        if let Ok(input_char) = term.read_char() {
+            if !input_char.eq_ignore_ascii_case(&'y') {
+                println!("Pull request creation aborted.");
+                return;
+            }
+        } else {
+            eprintln!("Failed to read input");
+        }
+    }
+
     let loading = Loading::default();
 
     loading.text("Pushing branch upstream..");
@@ -311,20 +386,26 @@ fn main() {
 
     // TODO: add reviewer
     loading.text("Opening pull request..");
-    let gh_output = Command::new("gh")
-        .arg("pr")
+    let mut gh_command = Command::new("gh");
+    gh_command.arg("pr")
         .arg("create")
         .arg("--title")
         .arg(&pr_title)
         .arg("--body")
         .arg(&pr_body)
         .arg("--base")
-        .arg(&target_branch)
-        .output()
+        .arg(&target_branch);
+
+    if !reviewers.is_empty() {
+        let reviewer_string = reviewers.join(",");
+        gh_command.arg("--reviewer").arg(reviewer_string);
+    }
+
+    let gh_output = gh_command.output()
         .unwrap();
 
-    let gh_output_stderr = String::from_utf8(gh_output.clone().stderr).unwrap();
-    if gh_output_stderr.len() > 0 {
+    let gh_output_stderr = String::from_utf8_lossy(&gh_output.stderr);
+    if !gh_output_stderr.is_empty() {
         loading.fail("Failed to create PR!");
         loading.end();
 
@@ -332,7 +413,7 @@ fn main() {
         return;
     }
 
-    let gh_output_stdout = String::from_utf8(gh_output.stdout).unwrap();
+    let gh_output_stdout = String::from_utf8_lossy(&gh_output.stdout);
     let pr_url = gh_output_stdout.trim();
 
     loading.success(format!("PR opened successfully: {}", pr_url));
