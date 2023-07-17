@@ -29,6 +29,7 @@ if you want to use this right now you'll install the Rust toolchain stuff, clone
 
 WIP:
 
+(will eventually look like this but not currently supported)
 ```
 curl -LO https://raw.githubusercontent.com/azjgard/pr/main/bin/install.sh && sudo chmod +x ./install.sh && sudo ./install.sh && rm ./install.sh
 ```
