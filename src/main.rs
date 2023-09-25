@@ -232,7 +232,10 @@ fn get_pr_body(overview: &str, context: &str) -> String {
 ## Screenshots
 
 ## Test Plan
+- [ ] 
 
+### Reviewer checklist
+- [ ] Have you thought about additional items that should be tested? Add them below if necessary.
 ",
         overview = overview,
         context = context
