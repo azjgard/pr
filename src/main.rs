@@ -240,7 +240,20 @@ fn get_pr_body(overview: &str, context: &str) -> String {
 }
 
 fn fetch_github_reviewers() -> Vec<String> {
-    let gh_users = Command::new("gh")
+    let gh_team_users_output = Command::new("gh")
+        .arg("api")
+        .arg("orgs/dittowords/teams")
+        .arg("--jq")
+        .arg(".[].slug")
+        .output()
+        .unwrap();
+
+    let gh_team_users = String::from_utf8_lossy(&gh_team_users_output.stdout)
+        .split_whitespace()
+        .map(String::from)
+        .collect::<Vec<String>>();
+
+    let gh_users_output = Command::new("gh")
         .arg("api")
         .arg("orgs/dittowords/members")
         .arg("--jq")
@@ -248,12 +261,12 @@ fn fetch_github_reviewers() -> Vec<String> {
         .output()
         .unwrap();
 
-    let gh_users = String::from_utf8_lossy(&gh_users.stdout)
+    let gh_users = String::from_utf8_lossy(&gh_users_output.stdout)
         .split_whitespace()
         .map(String::from)
         .collect::<Vec<String>>();
 
-    gh_users
+    [gh_team_users, gh_users].concat()
 }
 
 
